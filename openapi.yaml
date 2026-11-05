@@ -1,0 +1,491 @@
+openapi: 3.1.0
+
+info:
+  title: CampusEvent API
+  description: >
+    REST API for the CampusEvent University Event Management
+    and QR Ticketing Platform.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development server
+
+tags:
+  - name: Authentication
+    description: User registration and login
+  - name: Events
+    description: Event creation, browsing, searching, and editing
+  - name: Registrations
+    description: Student event registration
+  - name: Tickets
+    description: QR ticket generation and verification
+  - name: Attendance
+    description: Event attendance tracking
+
+paths:
+
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid or missing registration information
+        '409':
+          description: Account already exists
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Log in to the platform
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid email or password
+
+  /events:
+    get:
+      tags:
+        - Events
+      summary: Browse and search campus events
+      description: >
+        Returns available events. The optional search parameter
+        allows users to search by event keywords.
+      operationId: getEvents
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Keyword used to search for events
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Events retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+
+    post:
+      tags:
+        - Events
+      summary: Create a new event
+      operationId: createEvent
+      security:
+        - BearerAuth: []
+      description: Restricted to authorized club representatives.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+      responses:
+        '201':
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          description: Required event information is missing or invalid
+        '401':
+          description: Authentication required
+        '403':
+          description: User is not authorized to create events
+
+  /events/{eventId}:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+
+    get:
+      tags:
+        - Events
+      summary: View event details
+      operationId: getEventById
+      responses:
+        '200':
+          description: Event details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          description: Event not found
+
+    put:
+      tags:
+        - Events
+      summary: Edit event information
+      operationId: updateEvent
+      security:
+        - BearerAuth: []
+      description: >
+        Only authorized club representatives can update
+        events they are permitted to manage.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+      responses:
+        '200':
+          description: Event updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          description: Invalid event information
+        '401':
+          description: Authentication required
+        '403':
+          description: User is not authorized to edit this event
+        '404':
+          description: Event not found
+
+  /events/{eventId}/registrations:
+    post:
+      tags:
+        - Registrations
+      summary: Register for an event
+      operationId: registerForEvent
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      description: Allows an authenticated student to register for an event.
+      responses:
+        '201':
+          description: Registration completed and QR ticket generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Registration'
+        '400':
+          description: Invalid registration request
+        '401':
+          description: Authentication required
+        '403':
+          description: Only students can register for events
+        '404':
+          description: Event not found
+        '409':
+          description: Duplicate registration or registration conflict
+
+  /registrations/{registrationId}/ticket:
+    get:
+      tags:
+        - Tickets
+      summary: Access a QR-code ticket
+      operationId: getTicket
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: registrationId
+          in: path
+          required: true
+          description: Unique registration identifier
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: QR ticket retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '401':
+          description: Authentication required
+        '404':
+          description: Registration or ticket not found
+
+  /tickets/verify:
+    post:
+      tags:
+        - Tickets
+      summary: Verify a QR-code ticket
+      operationId: verifyTicket
+      security:
+        - BearerAuth: []
+      description: Restricted to authorized event organizers.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TicketVerificationRequest'
+      responses:
+        '200':
+          description: Ticket verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketVerificationResponse'
+        '400':
+          description: Invalid QR-code data
+        '401':
+          description: Authentication required
+        '403':
+          description: User is not authorized to verify tickets
+        '404':
+          description: Ticket not found
+        '409':
+          description: Ticket has already been used
+
+  /events/{eventId}/attendance:
+    get:
+      tags:
+        - Attendance
+      summary: View event attendance records
+      operationId: getEventAttendance
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/EventId'
+      description: Restricted to authorized event organizers.
+      responses:
+        '200':
+          description: Attendance records retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Attendance'
+        '401':
+          description: Authentication required
+        '403':
+          description: User is not authorized to view attendance
+        '404':
+          description: Event not found
+
+components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      description: Unique event identifier
+      schema:
+        type: integer
+
+  schemas:
+
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        role:
+          type: string
+          enum:
+            - student
+            - club_representative
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+            - student
+            - club_representative
+            - administrator
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          examples: 
+            - Bearer
+
+    EventRequest:
+      type: object
+      required:
+        - title
+        - date
+        - time
+        - location
+      properties:
+        title:
+          type: string
+          examples: 
+            - Technology and Innovation Day
+        description:
+          type: string
+        date:
+          type: string
+          format: date
+          examples: 
+            - "2026-12-15"
+        time:
+          type: string
+          examples: 
+            - "14:00"
+        location:
+          type: string
+          examples: 
+            - University Conference Hall
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+        location:
+          type: string
+        organizerId:
+          type: integer
+
+    Registration:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        studentId:
+          type: integer
+        registrationDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          examples: 
+            - confirmed
+
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: integer
+        registrationId:
+          type: integer
+        eventId:
+          type: integer
+        qrCodeData:
+          type: string
+        status:
+          type: string
+          enum:
+            - valid
+            - used
+            - invalid
+
+    TicketVerificationRequest:
+      type: object
+      required:
+        - qrCodeData
+      properties:
+        qrCodeData:
+          type: string
+          description: Scanned QR-code data
+
+    TicketVerificationResponse:
+      type: object
+      properties:
+        valid:
+          type: boolean
+        message:
+          type: string
+        ticketId:
+          type: integer
+
+    Attendance:
+      type: object
+      properties:
+        id:
+          type: integer
+        eventId:
+          type: integer
+        studentId:
+          type: integer
+        attendanceStatus:
+          type: string
+          examples: 
+            - present
+        checkInTime:
+          type: string
+          format: date-time

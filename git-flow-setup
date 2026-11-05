@@ -1,0 +1,6 @@
+Git-Flow and Version Management Configuration
+To ensure order, code quality, and sustainable team collaboration throughout our project's development lifecycle, I adopted and fully configured the industry-standard Git-Flow branching model on GitHub:
+main (Production) Branch: The primary branch maintaining the stable, production-ready state of the project at all times. Direct code pushes to this branch are completely restricted.
+develop (Development) Branch: The central integration branch where team members merge their completed features and where integration testing takes place.
+Feature Branches: Temporary branches created off the develop branch (feature/user-login, feature/database, etc.) allowing each team member to develop assigned tasks in isolation. Once completed, these branches were merged back into develop via Pull Requests (PRs).
+Process Management and Integration: By making Code Reviews mandatory prior to merging code into core branches, I minimized merge conflicts and maintained a clean, trackable version history for the project
