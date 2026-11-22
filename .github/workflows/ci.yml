@@ -1,0 +1,24 @@
+name: Sprint 2 Repository & Deliverables CI
+
+on:
+  pull_request:
+    branches: [ develop, main ]
+  push:
+    branches: [ develop, main ]
+
+jobs:
+  validate-deliverables:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify existing core files
+        run: |
+          test -f CONTRIBUTIONS.md
+          test -f openapi.yaml
+          test -f git-flow-setup
+
+      - name: Check for empty Markdown or PDF deliverables
+        run: |
+          find . -maxdepth 2 \( -name "*.md" -o -name "*.pdf" \) -size 0 | grep . && exit 1 || echo "All deliverables are non-empty and valid."
